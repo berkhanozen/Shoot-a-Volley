@@ -6,12 +6,14 @@ const footballerLeft = new Image();
 const footballerRight = new Image();
 const ballSprite = new Image();
 const goalkeeperImg = new Image();
+const UIImg = new Image();
 
 pitch.src = "images/pitch640.png";
 footballerLeft.src = "images/footballerLeft64.png";
 footballerRight.src = "images/footballerRight64.png";
 ballSprite.src = "images/footballBallSprite.png";
 goalkeeperImg.src = "images/goalkeeper48.png";
+UIImg.src = "images/UI.png";
 
 const hitSound = new Audio();
 const goalSound = new Audio();
@@ -32,6 +34,25 @@ var leftPostX = 224;
 var rightPostX = 418; 
 var goalLineY = 80;
 
+const state = {
+    current : 0,
+    start : 0,
+    game : 1
+}
+
+const UI = {
+    width : 300,
+    height : 240,
+    x : cvs.width/2,
+    y : cvs.height/2,
+
+    draw: function(){
+        if(state.current == state.start){
+            ctx.drawImage(UIImg, this.x - this.width/2, this.y - this.height/2);
+        }
+    }
+}
+
 const footballer = {
     footballerFrame : [footballerRight, footballerLeft],
     speed : 8,
@@ -46,17 +67,23 @@ const footballer = {
     },
 
     moveRight : function(){
-        this.x += this.speed;
-        this.frame = 0;
-        isLeft = false;
-        isRight = true;
+        if(state.current == state.game)
+        {
+            this.x += this.speed;
+            this.frame = 0;
+            isLeft = false;
+            isRight = true;
+        }
     },
 
     moveLeft : function(){
-        this.x -= this.speed;
-        this.frame = 1;
-        isLeft = true;
-        isRight = false;
+        if(state.current == state.game)
+        {
+            this.x -= this.speed;
+            this.frame = 1;
+            isLeft = true;
+            isRight = false;
+        }
     },
 
 }
@@ -74,19 +101,22 @@ const goalkeeper = {
         ctx.drawImage(goalkeeperImg, this.x, this.y);
     },
     update : function(){
-        if(goalkeeper.x < leftPostX){
-            this.toRight = true;
-            this.toLeft = false;
+        if(state.current == state.game)
+        {
+            if(goalkeeper.x < leftPostX){
+                this.toRight = true;
+                this.toLeft = false;
+            }
+                
+            else if(goalkeeper.x + goalkeeper.width > rightPostX){
+                this.toLeft = true;
+                this.toRight = false;
+            }
+            if(this.toRight)
+                goalkeeper.x += this.speed;
+            else
+                goalkeeper.x -= this.speed;
         }
-            
-        else if(goalkeeper.x + goalkeeper.width > rightPostX){
-            this.toLeft = true;
-            this.toRight = false;
-        }
-        if(this.toRight)
-            goalkeeper.x += this.speed;
-        else
-            goalkeeper.x -= this.speed;
     }
 }
 
@@ -117,28 +147,31 @@ const ball = {
     },
 
     update : function(){
-        this.period = 5;
-        this.frame += frames % this.period == 0 ? 1 : 0
-        this.frame %= this.animation.length;
-
-        for(let i = 0; i < this.loop.length; i++){
-            let ballNow = this.loop[i];
-            ballNow.x -= ballNow.speed;
-            if(ballNow.x < -5){
-                this.loop.shift();
-                score.value = 0;
+        if(state.current == state.game)
+        {
+            this.period = 5;
+            this.frame += frames % this.period == 0 ? 1 : 0
+            this.frame %= this.animation.length;
+    
+            for(let i = 0; i < this.loop.length; i++){
+                let ballNow = this.loop[i];
+                ballNow.x -= ballNow.speed;
+                if(ballNow.x < -5){
+                    this.loop.shift();
+                    score.value = 0;
+                }
             }
-        }
-
-        if(frames % 250 == 0){
-            shootTrig = false;
-            onTheLine = false;
-            this.loop.push({
-                x: this.x,
-                y: this.y,
-                speed : this.speed,
-                shootSpeed : this.shootSpeed,
-            });
+    
+            if(frames % 250 == 0){
+                shootTrig = false;
+                onTheLine = false;
+                this.loop.push({
+                    x: this.x,
+                    y: this.y,
+                    speed : this.speed,
+                    shootSpeed : this.shootSpeed,
+                });
+            }
         }
     },
 
@@ -188,10 +221,11 @@ function shoot(){
 
 function draw(){
     ctx.drawImage(pitch, 0, 0);
+    goalkeeper.draw(); 
     ball.draw();
     footballer.draw();
-    goalkeeper.draw();
     score.draw();
+    UI.draw();
     
     for(let i = 0; i < ball.loop.length; i++){
         if(ball.loop[i].x + ball.width >= footballer.x+25 && ball.loop[i].x <= footballer.x + footballer.width){
@@ -250,6 +284,7 @@ document.addEventListener('keydown', function(event) {
             footballer.moveRight();
             break;
         case " ":
+            state.current = state.game;
         case "ArrowUp":
             if(collision == true)
             {
@@ -259,7 +294,6 @@ document.addEventListener('keydown', function(event) {
             }
             break;
     }
-    
 }, true);
 
 function normalize(val, max, min) { 
@@ -280,7 +314,6 @@ function loop(){
         }
         frames++;
     }, 1000 / fps);
-    
     
 }
 
